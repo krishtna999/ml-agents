@@ -260,9 +260,18 @@ public class AgentSoccer : Agent
 
     public override void OnEpisodeBegin()
     {
-        m_BallTouch = m_ResetParams.GetWithDefault("ball_touch", 0);
-        m_LastDistanceToBall = 0f;
-        m_LastDistanceToOwnGoal = 0f;
+        m_BallTouch = m_ResetParams.GetWithDefault("ball_touch", 1.0f);
+        
+        if (m_Ball != null && m_OwnGoal != null)
+        {
+            m_LastDistanceToBall = Vector3.Distance(transform.position, m_Ball.transform.position);
+            m_LastDistanceToOwnGoal = Vector3.Distance(transform.position, m_OwnGoal.transform.position);
+        }
+        else
+        {
+            m_LastDistanceToBall = 0f;
+            m_LastDistanceToOwnGoal = 0f;
+        }
     }
     
     void ApplyDefensiveRewards()
@@ -281,7 +290,7 @@ public class AgentSoccer : Agent
         
         if (distAgentToOwnGoal < distBallToOwnGoal && distAgentToBall < 10f)
         {
-            AddReward(0.001f);
+            AddReward(0.1f);
         }
         
         // 2. Reward for moving towards the ball when it's in defending half.
@@ -293,46 +302,44 @@ public class AgentSoccer : Agent
             float deltaDistance = m_LastDistanceToBall - distAgentToBall;
             if (deltaDistance > 0)
             {
-                AddReward(0.002f * deltaDistance);
+                AddReward(0.2f * deltaDistance);
             }
         }
         
         // 3. Negative reward if ball gets too close to own goal.
         if (distBallToOwnGoal < 5f)
         {
-            AddReward(-0.01f * (5f - distBallToOwnGoal));
+            AddReward(-0.5f * (5f - distBallToOwnGoal));
         }
         
         // 4. Reward for ball being on opponent's side - trying something like the best defense is a good offense.
         float distBallToOppGoal = Vector3.Distance(ballPos, oppGoalPos);
         if (distBallToOppGoal < 15f)
         {
-            AddReward(0.003f * (15f - distBallToOppGoal) / 15f);
+            AddReward(0.3f * (15f - distBallToOppGoal) / 15f); 
         }
         
         if (position == Position.Goalie)
         {
             if (distAgentToOwnGoal < 3f)
             {
-                AddReward(0.002f);
+                AddReward(0.15f);
             }
             // Existential for goalie, helps a bit when goalie is idling waiting for ball.
-            AddReward(m_Existential * 0.5f);
-        }
+            AddReward(m_Existential * 10.0f);
         else if (position == Position.Striker)
         {
             bool ballInOffensiveHalf = !ballInDefensiveHalf;
             // Reward for striker to pressure enemy offense.
             if (ballInOffensiveHalf && distAgentToBall < 5f)
             {
-                AddReward(0.002f);
+                AddReward(0.2f);
             }
         }
         else
         {
             // Generic position - balanced defense
-            AddReward(m_Existential * 0.2f);
-        }
+            AddReward(m_Existential * 5.0f);
         
         m_LastDistanceToBall = distAgentToBall;
         m_LastDistanceToOwnGoal = distAgentToOwnGoal;
@@ -351,17 +358,17 @@ public class AgentSoccer : Agent
         // Higher reward for touching ball when it's close to own goal (defensive clearance)
         if (distBallToOwnGoal < 8f)
         {
-            return 0.5f * m_BallTouch;
+            return 2.0f * m_BallTouch;
         }
         // Good reward for touching ball in middle field
         else if (distBallToOwnGoal < 15f)
         {
-            return 0.3f * m_BallTouch;
+            return 1.0f * m_BallTouch;
         }
         // Standard reward for offensive touches (pushing toward opponent goal)
         else
         {
-            return 0.25f * m_BallTouch;
+            return 0.8f * m_BallTouch;
         }
     }
 
