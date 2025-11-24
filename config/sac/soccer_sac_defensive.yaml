@@ -1,18 +1,17 @@
 behaviors:
   # Blue Team - Normal Behavior
   SoccerBlue:
-    trainer_type: sac
+    trainer_type: poca
     
     hyperparameters:
       learning_rate: 3.0e-4
       learning_rate_schedule: constant
-      batch_size: 128
-      buffer_size: 500000
-      buffer_init_steps: 10000
-      tau: 0.005
-      steps_per_update: 10.0
-      save_replay_buffer: false
-      init_entcoef: 1.0
+      batch_size: 2048
+      buffer_size: 20480
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
     
     network_settings:
       normalize: false
@@ -30,22 +29,20 @@ behaviors:
     time_horizon: 1000
     summary_freq: 10000
     checkpoint_interval: 500000
-    threaded: true
     
   # Purple Team - Defensive Behavior ("Best Defense is Good Offense")
   SoccerPurple:
-    trainer_type: sac
+    trainer_type: poca
     
     hyperparameters:
       learning_rate: 3.0e-4
       learning_rate_schedule: constant
-      batch_size: 128
-      buffer_size: 500000
-      buffer_init_steps: 10000
-      tau: 0.005
-      steps_per_update: 10.0
-      save_replay_buffer: false
-      init_entcoef: 1.0
+      batch_size: 2048
+      buffer_size: 20480
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
     
     network_settings:
       normalize: false
@@ -63,4 +60,3 @@ behaviors:
     time_horizon: 1000
     summary_freq: 10000
     checkpoint_interval: 500000
-    threaded: true
