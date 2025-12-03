@@ -9,6 +9,12 @@ public enum Team
     Purple = 1
 }
 
+public enum AgentPersonality
+{
+    Offensive,
+    Defensive
+}
+
 public class AgentSoccer : Agent
 {
     // Note that that the detectable tags are different for the blue and purple teams. The order is
@@ -28,6 +34,7 @@ public class AgentSoccer : Agent
 
     [HideInInspector]
     public Team team;
+    public AgentPersonality personality;
     float m_KickPower;
     // The coefficient for the reward for colliding with a ball. Set using curriculum.
     float m_BallTouch;
@@ -39,7 +46,6 @@ public class AgentSoccer : Agent
     float m_ForwardSpeed;
 
 
-    [HideInInspector]
     public Rigidbody agentRb;
     SoccerSettings m_SoccerSettings;
     BehaviorParameters m_BehaviorParameters;
@@ -47,29 +53,32 @@ public class AgentSoccer : Agent
     public float rotSign;
 
     EnvironmentParameters m_ResetParams;
+    SoccerEnvController m_EnvController;
 
     public override void Initialize()
     {
-        SoccerEnvController envController = GetComponentInParent<SoccerEnvController>();
-        if (envController != null)
+        m_EnvController = GetComponentInParent<SoccerEnvController>();
+        if (m_EnvController != null)
         {
-            m_Existential = 1f / envController.MaxEnvironmentSteps;
+            m_Existential = m_EnvController.MaxEnvironmentSteps > 0 ? 1f / m_EnvController.MaxEnvironmentSteps : 0f;
         }
         else
         {
-            m_Existential = 1f / MaxStep;
+            m_Existential = MaxStep > 0 ? 1f / MaxStep : 0f;
         }
 
         m_BehaviorParameters = gameObject.GetComponent<BehaviorParameters>();
         if (m_BehaviorParameters.TeamId == (int)Team.Blue)
         {
             team = Team.Blue;
+            personality = AgentPersonality.Offensive;
             initialPos = new Vector3(transform.position.x - 5f, .5f, transform.position.z);
             rotSign = 1f;
         }
         else
         {
             team = Team.Purple;
+            personality = AgentPersonality.Defensive;
             initialPos = new Vector3(transform.position.x + 5f, .5f, transform.position.z);
             rotSign = -1f;
         }
@@ -156,6 +165,24 @@ public class AgentSoccer : Agent
             // Existential penalty for Strikers
             AddReward(-m_Existential);
         }
+        else if (personality == AgentPersonality.Offensive)
+        {
+             // Offensive: Reward for ball in opponent half (Local X > 0 for Blue)
+             var ballLocalPos = m_EnvController.transform.InverseTransformPoint(m_EnvController.ball.transform.position);             
+             if (ballLocalPos.x > 0)
+             {
+                 AddReward(0.001f);
+             }
+        }
+        else if (personality == AgentPersonality.Defensive)
+        {
+             // Defensive: Reward for ball in opponent half (Local X < 0 for Purple)
+             var ballLocalPos = m_EnvController.transform.InverseTransformPoint(m_EnvController.ball.transform.position);
+             if (ballLocalPos.x < 0)
+             {
+                 AddReward(0.002f);
+             }
+        }
         MoveAgent(actionBuffers.DiscreteActions);
     }
 
@@ -206,6 +233,17 @@ public class AgentSoccer : Agent
             var dir = c.contacts[0].point - transform.position;
             dir = dir.normalized;
             c.gameObject.GetComponent<Rigidbody>().AddForce(dir * force);
+
+            // Defensive Clearing Bonus
+            if (personality == AgentPersonality.Defensive)
+            {
+                // Convert kick direction to Local Space of the Field
+                var localDir = m_EnvController.transform.InverseTransformDirection(dir);
+                if (localDir.x < 0)
+                {
+                    AddReward(0.1f);
+                }
+            }
         }
     }
 

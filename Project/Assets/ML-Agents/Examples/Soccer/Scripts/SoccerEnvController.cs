@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Unity.MLAgents;
+using Unity.MLAgents.Policies;
 using UnityEngine;
 
 public class SoccerEnvController : MonoBehaviour
@@ -60,7 +61,8 @@ public class SoccerEnvController : MonoBehaviour
             item.StartingPos = item.Agent.transform.position;
             item.StartingRot = item.Agent.transform.rotation;
             item.Rb = item.Agent.GetComponent<Rigidbody>();
-            if (item.Agent.team == Team.Blue)
+            // Use BehaviorParameters to check team, avoiding race condition with Agent.Initialize()
+            if (item.Agent.GetComponent<BehaviorParameters>().TeamId == (int)Team.Blue)
             {
                 m_BlueAgentGroup.RegisterAgent(item.Agent);
             }
@@ -97,15 +99,21 @@ public class SoccerEnvController : MonoBehaviour
 
     public void GoalTouched(Team scoredTeam)
     {
+        float timeBonus = (1 - (float)m_ResetTimer) / MaxEnvironmentSteps;
+
         if (scoredTeam == Team.Blue)
         {
-            m_BlueAgentGroup.AddGroupReward(1 - (float)m_ResetTimer / MaxEnvironmentSteps);
-            m_PurpleAgentGroup.AddGroupReward(-1);
+            // Blue (Offensive) Scores
+            m_BlueAgentGroup.AddGroupReward(timeBonus);
+            // Purple (Defensive) Concedes: High Penalty for failing their primary job
+            m_PurpleAgentGroup.AddGroupReward(-2.0f);
         }
         else
         {
-            m_PurpleAgentGroup.AddGroupReward(1 - (float)m_ResetTimer / MaxEnvironmentSteps);
-            m_BlueAgentGroup.AddGroupReward(-1);
+            // Purple (Defensive) Scores
+            m_PurpleAgentGroup.AddGroupReward(timeBonus);
+            // Blue (Offensive) Concedes: Lower Penalty (Acceptable risk for attacking style)
+            m_BlueAgentGroup.AddGroupReward(-0.5f);
         }
         m_PurpleAgentGroup.EndGroupEpisode();
         m_BlueAgentGroup.EndGroupEpisode();
