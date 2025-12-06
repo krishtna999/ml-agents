@@ -43,6 +43,7 @@ public class SoccerEnvController : MonoBehaviour
 
     private SimpleMultiAgentGroup m_BlueAgentGroup;
     private SimpleMultiAgentGroup m_PurpleAgentGroup;
+    private List<AgentSoccer> m_PurpleAgents;
 
     private int m_ResetTimer;
 
@@ -53,6 +54,7 @@ public class SoccerEnvController : MonoBehaviour
         // Initialize TeamManager
         m_BlueAgentGroup = new SimpleMultiAgentGroup();
         m_PurpleAgentGroup = new SimpleMultiAgentGroup();
+        m_PurpleAgents = new List<AgentSoccer>();
         ballRb = ball.GetComponent<Rigidbody>();
         m_BallStartingPos = new Vector3(ball.transform.position.x, ball.transform.position.y, ball.transform.position.z);
         foreach (var item in AgentsList)
@@ -67,6 +69,7 @@ public class SoccerEnvController : MonoBehaviour
             else
             {
                 m_PurpleAgentGroup.RegisterAgent(item.Agent);
+                m_PurpleAgents.Add(item.Agent);
             }
         }
         ResetScene();
@@ -80,6 +83,19 @@ public class SoccerEnvController : MonoBehaviour
             m_BlueAgentGroup.GroupEpisodeInterrupted();
             m_PurpleAgentGroup.GroupEpisodeInterrupted();
             ResetScene();
+        }
+
+        // Anti-crowding penalty for Purple Team
+        for (int i = 0; i < m_PurpleAgents.Count; i++)
+        {
+            for (int j = i + 1; j < m_PurpleAgents.Count; j++)
+            {
+                if ((m_PurpleAgents[i].transform.position - m_PurpleAgents[j].transform.position).sqrMagnitude < 4.0f)
+                {
+                    m_PurpleAgents[i].AddReward(-0.001f);
+                    m_PurpleAgents[j].AddReward(-0.001f);
+                }
+            }
         }
     }
 

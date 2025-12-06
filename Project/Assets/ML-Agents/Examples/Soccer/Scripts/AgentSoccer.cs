@@ -9,6 +9,12 @@ public enum Team
     Purple = 1
 }
 
+public enum AgentPersonality
+{
+    Offensive,
+    Defensive
+}
+
 public class AgentSoccer : Agent
 {
     // Note that that the detectable tags are different for the blue and purple teams. The order is
@@ -28,6 +34,7 @@ public class AgentSoccer : Agent
 
     [HideInInspector]
     public Team team;
+    public AgentPersonality personality;
     float m_KickPower;
     // The coefficient for the reward for colliding with a ball. Set using curriculum.
     float m_BallTouch;
@@ -47,13 +54,14 @@ public class AgentSoccer : Agent
     public float rotSign;
 
     EnvironmentParameters m_ResetParams;
-
+    SoccerEnvController m_envController;
+    
     public override void Initialize()
     {
-        SoccerEnvController envController = GetComponentInParent<SoccerEnvController>();
-        if (envController != null)
+        m_envController = GetComponentInParent<SoccerEnvController>();
+        if (m_envController != null)
         {
-            m_Existential = 1f / envController.MaxEnvironmentSteps;
+            m_Existential = 1f / m_envController.MaxEnvironmentSteps;
         }
         else
         {
@@ -64,12 +72,14 @@ public class AgentSoccer : Agent
         if (m_BehaviorParameters.TeamId == (int)Team.Blue)
         {
             team = Team.Blue;
+            personality = AgentPersonality.Offensive;
             initialPos = new Vector3(transform.position.x - 5f, .5f, transform.position.z);
             rotSign = 1f;
         }
         else
         {
             team = Team.Purple;
+            personality = AgentPersonality.Defensive;
             initialPos = new Vector3(transform.position.x + 5f, .5f, transform.position.z);
             rotSign = -1f;
         }
@@ -156,6 +166,11 @@ public class AgentSoccer : Agent
             // Existential penalty for Strikers
             AddReward(-m_Existential);
         }
+        else if (team == Team.Purple && transform.position.x < -1f)
+        {
+            // Defensive penalty for crossing midfield with leeway (for kickoff and stuff). Gonna see how the bots learn to score from their half. Should be interesting.
+            AddReward(-0.001f);
+        }
         MoveAgent(actionBuffers.DiscreteActions);
     }
 
@@ -203,6 +218,11 @@ public class AgentSoccer : Agent
         if (c.gameObject.CompareTag("ball"))
         {
             AddReward(.2f * m_BallTouch);
+            if (team == Team.Purple)
+            {
+                // Since Purple is gonna be playing from their half mainly, giving some reward for kicking the ball hard.
+                AddReward(0.1f * m_KickPower);
+            }
             var dir = c.contacts[0].point - transform.position;
             dir = dir.normalized;
             c.gameObject.GetComponent<Rigidbody>().AddForce(dir * force);
