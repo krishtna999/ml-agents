@@ -150,6 +150,18 @@ public class AgentSoccer : Agent
         {
             // Existential bonus for Goalies.
             AddReward(m_Existential);
+
+            // 1. Rewarded for staying in their defensive half.
+            // Blue (Team 0) starts at X = -5. Defensive half is X < 0.
+            // Purple (Team 1) starts at X = +5. Defensive half is X > 0.
+            bool inDefensiveHalf = (team == Team.Blue && transform.position.x < 0) ||
+                                   (team == Team.Purple && transform.position.x > 0);
+            
+            if (!inDefensiveHalf)
+            {
+                // Strong penalty for leaving defensive half
+                AddReward(-0.01f); // Adjust magnitude as needed
+            }
         }
         else if (position == Position.Striker)
         {
@@ -206,6 +218,18 @@ public class AgentSoccer : Agent
             var dir = c.contacts[0].point - transform.position;
             dir = dir.normalized;
             c.gameObject.GetComponent<Rigidbody>().AddForce(dir * force);
+
+            if (position == Position.Goalie)
+            {
+                // Power shot bonus in defensiv half. Think like clearing.
+                bool inDefensiveHalf = (team == Team.Blue && transform.position.x < 0) ||
+                                    (team == Team.Purple && transform.position.x > 0);
+                
+                if (inDefensiveHalf && m_KickPower > 0f)
+                {
+                    AddReward(m_KickPower * 0.1f);
+                }                
+            }
         }
     }
 
